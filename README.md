@@ -309,14 +309,8 @@ CGO_ENABLED=0 GOOS=macos GOARCH=arm64 go build -tags "full"
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "full"
 ```
 
-## 致谢
+## 安装脚本
 
-- [Trojan](https://github.com/trojan-gfw/trojan)
-- [V2Fly](https://github.com/v2fly)
-- [utls](https://github.com/refraction-networking/utls)
-- [smux](https://github.com/xtaci/smux)
-- [go-tproxy](https://github.com/LiamHaworth/go-tproxy)
-
-## Stargazers over time
-
-[![Stargazers over time](https://starchart.cc/p4gefau1t/trojan-go.svg)](https://starchart.cc/p4gefau1t/trojan-go)
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lzh06550107/trojan-go-comment/master/install/trojan-go_install.sh)"
+```

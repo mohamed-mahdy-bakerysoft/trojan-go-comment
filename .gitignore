@@ -16,7 +16,6 @@
 
 build/
 *.DS_Store
-*.zip
 *.tar.gz
 *.crt
 *.key
