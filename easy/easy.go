@@ -52,7 +52,7 @@ func (o *easy) Name() string {
 }
 
 func (o *easy) Handle() error {
-	if !*o.server && !*o.client {
+	if !*o.server && !*o.client { // 必须指定 client 或者 server
 		return common.NewError("empty")
 	}
 	if *o.password == "" {
@@ -80,24 +80,25 @@ func (o *easy) Handle() error {
 		if err != nil {
 			log.Fatal(err)
 		}
-		clientConfig := ClientConfig{
-			RunType:    "client",
-			LocalAddr:  localHost,
-			LocalPort:  localPort,
-			RemoteAddr: remoteHost,
-			RemotePort: remotePort,
-			Password: []string{
+		clientConfig := ClientConfig{ // 创建客户端配置
+			RunType:    "client",   // 客户端角色
+			LocalAddr:  localHost,  // 本地监听host
+			LocalPort:  localPort,  // 本地端口
+			RemoteAddr: remoteHost, // 远程host
+			RemotePort: remotePort, // 远程端口
+			Password: []string{ // 连接密码
 				*o.password,
 			},
 		}
-		clientConfigJSON, err := json.Marshal(&clientConfig)
-		common.Must(err)
+		clientConfigJSON, err := json.Marshal(&clientConfig) // 将 Go 数据结构编码为 JSON 格式
+		common.Must(err)                                     // 是一种简化错误处理的模式，适用于需要立即终止程序的场景
 		log.Info("generated config:")
 		log.Info(string(clientConfigJSON))
 		proxy, err := proxy.NewProxyFromConfigData(clientConfigJSON, true)
 		if err != nil {
 			log.Fatal(err)
 		}
+		// 启动代理
 		if err := proxy.Run(); err != nil {
 			log.Fatal(err)
 		}
@@ -127,7 +128,7 @@ func (o *easy) Handle() error {
 			log.Fatal(err)
 		}
 		serverConfig := ServerConfig{
-			RunType:    "server",
+			RunType:    "server", // 服务端角色
 			LocalAddr:  localHost,
 			LocalPort:  localPort,
 			RemoteAddr: remoteHost,
@@ -135,12 +136,12 @@ func (o *easy) Handle() error {
 			Password: []string{
 				*o.password,
 			},
-			TLS: TLS{
+			TLS: TLS{ // 证书
 				Cert: *o.cert,
 				Key:  *o.key,
 			},
 		}
-		serverConfigJSON, err := json.Marshal(&serverConfig)
+		serverConfigJSON, err := json.Marshal(&serverConfig) // 将 Go 数据结构编码为 JSON 格式
 		common.Must(err)
 		log.Info("generated json config:")
 		log.Info(string(serverConfigJSON))

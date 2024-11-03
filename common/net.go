@@ -32,6 +32,7 @@ func HumanFriendlyTraffic(bytes uint64) string {
 	return fmt.Sprintf("%.2f GiB", float32(bytes)/GiB)
 }
 
+// 随机选择一个可用的端口
 func PickPort(network string, host string) int {
 	switch network {
 	case "tcp":

@@ -19,7 +19,7 @@ func (t *Tunnel) NewClient(ctx context.Context, client tunnel.Client) (tunnel.Cl
 }
 
 func (t *Tunnel) NewServer(ctx context.Context, server tunnel.Server) (tunnel.Server, error) {
-	return NewServer(ctx, server)
+	return NewServer(ctx, server) // 传入下一层协议服务
 }
 
 func init() {

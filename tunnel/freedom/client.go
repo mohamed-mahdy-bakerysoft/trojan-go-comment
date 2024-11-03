@@ -18,7 +18,7 @@ type Client struct {
 	keepAlive    bool
 	ctx          context.Context
 	cancel       context.CancelFunc
-	forwardProxy bool
+	forwardProxy bool // 是否启用前置代理(socks5)
 	proxyAddr    *tunnel.Address
 	username     string
 	password     string
@@ -26,7 +26,7 @@ type Client struct {
 
 func (c *Client) DialConn(addr *tunnel.Address, _ tunnel.Tunnel) (tunnel.Conn, error) {
 	// forward proxy
-	if c.forwardProxy {
+	if c.forwardProxy { // 是否启用前置代理(socks5)
 		var auth *proxy.Auth
 		if c.username != "" {
 			auth = &proxy.Auth{
@@ -46,6 +46,7 @@ func (c *Client) DialConn(addr *tunnel.Address, _ tunnel.Tunnel) (tunnel.Conn, e
 			Conn: conn,
 		}, nil
 	}
+	// 如果没有开启前置代理(socks5)
 	network := "tcp"
 	if c.preferIPv4 {
 		network = "tcp4"
@@ -63,6 +64,7 @@ func (c *Client) DialConn(addr *tunnel.Address, _ tunnel.Tunnel) (tunnel.Conn, e
 	}, nil
 }
 
+// 支持发送 UDP 数据包
 func (c *Client) DialPacket(tunnel.Tunnel) (tunnel.PacketConn, error) {
 	if c.forwardProxy {
 		socksClient, err := socks5.NewClient(c.proxyAddr.String(), c.username, c.password, 0, 0)
@@ -111,6 +113,7 @@ func (c *Client) Close() error {
 
 func NewClient(ctx context.Context, _ tunnel.Client) (*Client, error) {
 	cfg := config.FromContext(ctx, Name).(*Config)
+	// forward_proxy前置代理选项
 	addr := tunnel.NewAddressFromHostPort("tcp", cfg.ForwardProxy.ProxyHost, cfg.ForwardProxy.ProxyPort)
 	ctx, cancel := context.WithCancel(ctx)
 	return &Client{

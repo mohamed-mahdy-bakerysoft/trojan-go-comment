@@ -30,7 +30,9 @@ type Config struct {
 	TransportPlugin TransportPluginConfig `json:"transport_plugin" yaml:"transport-plugin"`
 }
 
+// 模块加载时自动执行
 func init() {
+	// new 是一个内置函数，用于分配内存并初始化值。它通常用于创建指向类型的指针
 	config.RegisterConfigCreator(Name, func() interface{} {
 		return new(Config)
 	})

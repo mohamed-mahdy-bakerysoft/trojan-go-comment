@@ -170,6 +170,7 @@ func (o *apiController) Priority() int {
 	return 50
 }
 
+// 模块加载时自动运行
 func init() {
 	option.RegisterHandler(&apiController{
 		cmd:                flag.String("api", "", "Connect to a Trojan-Go API service. \"-api add/get/list\""),
@@ -179,9 +180,9 @@ func init() {
 		add:                flag.Bool("add-profile", false, "Add a new profile with API"),
 		delete:             flag.Bool("delete-profile", false, "Delete an existing profile with API"),
 		modify:             flag.Bool("modify-profile", false, "Modify an existing profile with API"),
-		uploadSpeedLimit:   flag.Int("upload-speed-limit", 0, "Limit the upload speed with API"),
-		downloadSpeedLimit: flag.Int("download-speed-limit", 0, "Limit the download speed with API"),
-		ipLimit:            flag.Int("ip-limit", 0, "Limit the number of IP with API"),
+		uploadSpeedLimit:   flag.Int("upload-speed-limit", 0, "Limit the upload speed with API"),     // 将密码为password的用户上传速度限制
+		downloadSpeedLimit: flag.Int("download-speed-limit", 0, "Limit the download speed with API"), // 将密码为password的用户下载速度限制
+		ipLimit:            flag.Int("ip-limit", 0, "Limit the number of IP with API"),               // 同时连接的IP数量
 		ctx:                context.Background(),
 	})
 }

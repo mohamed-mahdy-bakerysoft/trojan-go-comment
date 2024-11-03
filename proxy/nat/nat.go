@@ -14,6 +14,8 @@ import (
 	"github.com/p4gefau1t/trojan-go/tunnel/tproxy"
 )
 
+// 透明代理
+
 const Name = "NAT"
 
 func init() {
@@ -23,7 +25,9 @@ func init() {
 			return nil, common.NewError("router is not allowed in nat mode")
 		}
 		ctx, cancel := context.WithCancel(ctx)
+		// 入站路径 tproxy
 		serverStack := []string{tproxy.Name}
+		// 默认出站路径 trojan->tls->transport
 		clientStack := client.GenerateClientTree(cfg.TransportPlugin.Enabled, cfg.Mux.Enabled, cfg.Websocket.Enabled, cfg.Shadowsocks.Enabled, false)
 		c, err := proxy.CreateClientStack(ctx, clientStack)
 		if err != nil {

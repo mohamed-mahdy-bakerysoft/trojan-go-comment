@@ -171,7 +171,7 @@ func (u *User) GetSpeed() (uint64, uint64) {
 }
 
 type Authenticator struct {
-	users sync.Map
+	users sync.Map // 保存用户 map
 	ctx   context.Context
 }
 
@@ -233,6 +233,7 @@ func NewAuthenticator(ctx context.Context) (statistic.Authenticator, error) {
 	return u, nil
 }
 
+// 模块加载时自动执行
 func init() {
 	statistic.RegisterAuthenticatorCreator(Name, NewAuthenticator)
 }

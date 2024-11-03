@@ -19,6 +19,7 @@ import (
 	"github.com/p4gefau1t/trojan-go/log/golog/colorful"
 )
 
+// 模块加载时自动执行该初始化函数
 func init() {
 	log.RegisterLogger(New(os.Stdout))
 }
@@ -100,7 +101,7 @@ var (
 
 // New returns new Logger instance with predefined writer output and
 // automatically detect terminal coloring support
-func New(out FdWriter) *Logger {
+func New(out FdWriter) *Logger { // 日志器构造函数
 	return &Logger{
 		color:     terminal.IsTerminal(int(out.Fd())),
 		out:       out,

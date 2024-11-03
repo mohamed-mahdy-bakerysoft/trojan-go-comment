@@ -32,7 +32,7 @@ type PacketConn struct {
 }
 
 func (c *PacketConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
-	panic("implement me")
+	panic("implement me") // TODO lzh
 }
 
 func (c *PacketConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {

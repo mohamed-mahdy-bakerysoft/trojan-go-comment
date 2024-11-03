@@ -12,6 +12,8 @@ import (
 	"github.com/p4gefau1t/trojan-go/tunnel"
 )
 
+// https://p4gefau1t.github.io/trojan-go/advance/forward/
+
 type Server struct {
 	tunnel.Server
 	tcpListener net.Listener
@@ -75,7 +77,7 @@ func (s *Server) dispatchLoop() {
 					}
 				case <-s.ctx.Done():
 					return
-				case <-time.After(s.timeout):
+				case <-time.After(s.timeout): // 超时关闭连接
 					s.mappingLock.Lock()
 					delete(s.mapping, conn.src.String())
 					s.mappingLock.Unlock()
@@ -88,12 +90,13 @@ func (s *Server) dispatchLoop() {
 	}
 }
 
+// 让上一层协议获取当前层协议的连接
 func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
-	conn, err := s.tcpListener.Accept()
+	conn, err := s.tcpListener.Accept() // 直接获取 TCP 连接
 	if err != nil {
 		log.Fatal(common.NewError("dokodemo failed to accept connection").Base(err))
 	}
-	return &Conn{
+	return &Conn{ // 封装和返回连接对象
 		Conn: conn,
 		targetMetadata: &tunnel.Metadata{
 			Address: s.targetAddr,
@@ -101,6 +104,7 @@ func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	}, nil
 }
 
+// 支持向上层提供 UDP 包
 func (s *Server) AcceptPacket(tunnel.Tunnel) (tunnel.PacketConn, error) {
 	select {
 	case conn := <-s.packetChan:
@@ -119,14 +123,14 @@ func (s *Server) Close() error {
 
 func NewServer(ctx context.Context, _ tunnel.Server) (*Server, error) {
 	cfg := config.FromContext(ctx, Name).(*Config)
-	targetAddr := tunnel.NewAddressFromHostPort("tcp", cfg.TargetHost, cfg.TargetPort)
-	listenAddr := tunnel.NewAddressFromHostPort("tcp", cfg.LocalHost, cfg.LocalPort)
+	targetAddr := tunnel.NewAddressFromHostPort("tcp", cfg.TargetHost, cfg.TargetPort) // 目标地址
+	listenAddr := tunnel.NewAddressFromHostPort("tcp", cfg.LocalHost, cfg.LocalPort)   // 监听地址
 
-	tcpListener, err := net.Listen("tcp", listenAddr.String())
+	tcpListener, err := net.Listen("tcp", listenAddr.String()) // 监听 TCP
 	if err != nil {
 		return nil, common.NewError("failed to listen tcp").Base(err)
 	}
-	udpListener, err := net.ListenPacket("udp", listenAddr.String())
+	udpListener, err := net.ListenPacket("udp", listenAddr.String()) // 监听 UDP
 	if err != nil {
 		return nil, common.NewError("failed to listen udp").Base(err)
 	}

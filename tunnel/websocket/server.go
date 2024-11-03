@@ -36,12 +36,12 @@ type Server struct {
 	underlay  tunnel.Server
 	hostname  string
 	path      string
-	enabled   bool
+	enabled   bool // 开启 websocket
 	redirAddr net.Addr
 	redir     *redirector.Redirector
 	ctx       context.Context
 	cancel    context.CancelFunc
-	timeout   time.Duration
+	timeout   time.Duration // 握手超时等待时间
 }
 
 func (s *Server) Close() error {
@@ -49,6 +49,7 @@ func (s *Server) Close() error {
 	return s.underlay.Close()
 }
 
+// 让上一层协议获取当前层协议的连接
 func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	conn, err := s.underlay.AcceptConn(&Tunnel{})
 	if err != nil {
@@ -91,6 +92,7 @@ func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 
 	url := "wss://" + s.hostname + s.path
 	origin := "https://" + s.hostname
+	// 创建一个新的 WebSocket 配置对象。这个配置对象用于后续的 WebSocket 连接
 	wsConfig, err := websocket.NewConfig(url, origin)
 	if err != nil {
 		return nil, common.NewError("failed to create websocket config").Base(err)
@@ -108,7 +110,7 @@ func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 			handshake <- struct{}{}
 			// this function SHOULD NOT return unless the connection is ended
 			// or the websocket will be closed by ServeHTTP method
-			<-ctx.Done()
+			<-ctx.Done() // 阻塞
 			log.Debug("websocket closed")
 		},
 		Handshake: func(wsConfig *websocket.Config, httpRequest *http.Request) error {
@@ -121,19 +123,20 @@ func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 		Conn:       conn,
 		ReadWriter: rw,
 	}
-	go wsServer.ServeHTTP(respWriter, req)
+	go wsServer.ServeHTTP(respWriter, req) // ws 处理器
 
 	select {
 	case <-handshake:
-	case <-time.After(s.timeout):
+		// time.After(s.timeout) 会返回一个通道，在指定的时间 s.timeout 后发送一个空的信号
+	case <-time.After(s.timeout): // 握手超时等待
 	}
 
-	if wsConn == nil {
+	if wsConn == nil { // ws连接没有初始化，则握手失败
 		cancel()
 		return nil, common.NewError("websocket failed to handshake")
 	}
 
-	return &InboundConn{
+	return &InboundConn{ // 返回入站连接对象
 		OutboundConn: OutboundConn{
 			tcpConn: conn,
 			Conn:    wsConn,
@@ -143,6 +146,7 @@ func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	}, nil
 }
 
+// 不支持向上层提供 UDP 包
 func (s *Server) AcceptPacket(tunnel.Tunnel) (tunnel.PacketConn, error) {
 	return nil, common.NewError("not supported")
 }

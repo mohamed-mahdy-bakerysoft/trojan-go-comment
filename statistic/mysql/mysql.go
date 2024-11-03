@@ -22,10 +22,11 @@ const Name = "MYSQL"
 type Authenticator struct {
 	*memory.Authenticator
 	db             *sql.DB
-	updateDuration time.Duration
+	updateDuration time.Duration // 从MySQL获取用户数据并更新缓存的间隔时间
 	ctx            context.Context
 }
 
+// 同步内存和 mysql 中的数据
 func (a *Authenticator) updater() {
 	for {
 		for _, user := range a.ListUsers() {
@@ -61,15 +62,16 @@ func (a *Authenticator) updater() {
 				log.Error(common.NewError("failed to obtain data from the query result").Base(err))
 				break
 			}
+
 			if download+upload < quota || quota < 0 {
 				a.AddUser(hash)
-			} else {
+			} else { // 如果download+upload>quota，trojan-go服务器将拒绝该用户的连接
 				a.DelUser(hash)
 			}
 		}
 
 		select {
-		case <-time.After(a.updateDuration):
+		case <-time.After(a.updateDuration): // 定时器
 		case <-a.ctx.Done():
 			log.Debug("MySQL daemon exiting...")
 			return

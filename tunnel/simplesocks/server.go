@@ -61,6 +61,7 @@ func (s *Server) acceptLoop() {
 	}
 }
 
+// 让上一层协议获取当前层协议的连接
 func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	select {
 	case conn := <-s.connChan:
@@ -70,6 +71,7 @@ func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	}
 }
 
+// 支持向上层提供 UDP 包
 func (s *Server) AcceptPacket(tunnel.Tunnel) (tunnel.PacketConn, error) {
 	select {
 	case packetConn := <-s.packetChan:

@@ -15,14 +15,17 @@ import (
 	"github.com/p4gefau1t/trojan-go/option"
 )
 
+// Option 通过使用 type，你可以创建结构体、接口、数组、切片以及其他数据类型。定义新的类型有助于提高代码的可读性、可维护性和类型安全性
 type Option struct {
 	path *string
 }
 
+// Name 返回处理器名称
 func (o *Option) Name() string {
 	return Name
 }
 
+// 检测配置文件类型并读取配置数据
 func detectAndReadConfig(file string) ([]byte, bool, error) {
 	isJSON := false
 	switch {
@@ -41,7 +44,9 @@ func detectAndReadConfig(file string) ([]byte, bool, error) {
 	return data, isJSON, nil
 }
 
+// Handle Option 处理器的处理方法
 func (o *Option) Handle() error {
+	// 默认配置文件名称
 	defaultConfigPath := []string{
 		"config.json",
 		"config.yml",
@@ -73,11 +78,11 @@ func (o *Option) Handle() error {
 
 	if data != nil {
 		log.Info("trojan-go", constant.Version, "initializing")
-		proxy, err := NewProxyFromConfigData(data, isJSON)
+		proxy, err := NewProxyFromConfigData(data, isJSON) // 创建代理
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = proxy.Run()
+		err = proxy.Run() // 启动代理
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -91,7 +96,9 @@ func (o *Option) Priority() int {
 	return -1
 }
 
+// 模块加载时自动运行
 func init() {
+	// 设置 config 选项
 	option.RegisterHandler(&Option{
 		path: flag.String("config", "", "Trojan-Go config filename (.yaml/.yml/.json)"),
 	})

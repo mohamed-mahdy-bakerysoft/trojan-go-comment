@@ -62,6 +62,7 @@ func (s *Server) Close() error {
 	return s.underlay.Close()
 }
 
+// socks5 协议握手，Client建立与Server之间的连接
 func (s *Server) handshake(conn net.Conn) (*Conn, error) {
 	version := [1]byte{}
 	if _, err := conn.Read(version[:]); err != nil {
@@ -100,11 +101,13 @@ func (s *Server) handshake(conn net.Conn) (*Conn, error) {
 	}, nil
 }
 
+// socks5 connect 命令回复
 func (s *Server) connect(conn net.Conn) error {
 	_, err := conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 	return err
 }
 
+// socks5 UDP ASSOCIATE 命令回复
 func (s *Server) associate(conn net.Conn, addr *tunnel.Address) error {
 	buf := bytes.NewBuffer([]byte{0x05, 0x00, 0x00})
 	common.Must(addr.WriteTo(buf))
@@ -115,6 +118,10 @@ func (s *Server) associate(conn net.Conn, addr *tunnel.Address) error {
 func (s *Server) packetDispatchLoop() {
 	for {
 		buf := make([]byte, MaxPacketSize)
+		// ReadFrom 方法从连接中读取数据包，并将其存储在 buf 中。
+		// n 是读取的字节数，表示实际接收到的数据大小。
+		// src 是发送方的网络地址，通常是一个 net.Addr 类型的对象，包含源 IP 地址和端口号。
+		// err 是可能发生的错误，如果读取成功则为 nil，否则包含错误信息。
 		n, src, err := s.listenPacketConn.ReadFrom(buf)
 		if err != nil {
 			select {
@@ -197,13 +204,13 @@ func (s *Server) packetDispatchLoop() {
 
 func (s *Server) acceptLoop() {
 	for {
-		conn, err := s.underlay.AcceptConn(&Tunnel{})
+		conn, err := s.underlay.AcceptConn(&Tunnel{}) // adapter 服务协议获取 TCP 连接
 		if err != nil {
 			log.Error(common.NewError("socks accept err").Base(err))
 			return
 		}
 		go func(conn net.Conn) {
-			newConn, err := s.handshake(conn)
+			newConn, err := s.handshake(conn) // socks5 握手
 			if err != nil {
 				log.Error(common.NewError("socks failed to handshake with client").Base(err))
 				return
@@ -216,7 +223,7 @@ func (s *Server) acceptLoop() {
 					newConn.Close()
 					return
 				}
-				s.connChan <- newConn
+				s.connChan <- newConn // tcp连接
 				return
 			case Associate:
 				defer newConn.Close()
@@ -226,7 +233,7 @@ func (s *Server) acceptLoop() {
 					return
 				}
 				buf := [16]byte{}
-				newConn.Read(buf[:])
+				newConn.Read(buf[:]) // TODO lzh
 				log.Debug("socks udp session ends")
 			default:
 				log.Error(common.NewError(fmt.Sprintf("unknown socks command %d", newConn.metadata.Command)))
@@ -239,13 +246,13 @@ func (s *Server) acceptLoop() {
 // NewServer create a socks server
 func NewServer(ctx context.Context, underlay tunnel.Server) (tunnel.Server, error) {
 	cfg := config.FromContext(ctx, Name).(*Config)
-	listenPacketConn, err := underlay.AcceptPacket(&Tunnel{})
+	listenPacketConn, err := underlay.AcceptPacket(&Tunnel{}) // 获取 UDP 数据包监听器
 	if err != nil {
 		return nil, common.NewError("socks failed to listen packet from underlying server")
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	server := &Server{
-		underlay:         underlay,
+		underlay:         underlay, // adapter 协议
 		ctx:              ctx,
 		cancel:           cancel,
 		connChan:         make(chan tunnel.Conn, 32),

@@ -31,7 +31,7 @@ func (s *Server) acceptConnWorker() {
 			continue
 		}
 		go func(conn tunnel.Conn) {
-			smuxConfig := smux.DefaultConfig()
+			smuxConfig := smux.DefaultConfig() // 使用默认配置
 			// smuxConfig.KeepAliveDisabled = true
 			smuxSession, err := smux.Server(conn, smuxConfig)
 			if err != nil {
@@ -42,7 +42,7 @@ func (s *Server) acceptConnWorker() {
 				defer session.Close()
 				defer conn.Close()
 				for {
-					stream, err := session.AcceptStream()
+					stream, err := session.AcceptStream() // 接收会话流
 					if err != nil {
 						log.Error(err)
 						return
@@ -62,6 +62,7 @@ func (s *Server) acceptConnWorker() {
 	}
 }
 
+// 让上一层协议获取当前层协议的连接
 func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	select {
 	case conn := <-s.connChan:
@@ -71,6 +72,7 @@ func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	}
 }
 
+// 不支持向上层提供 UDP 包
 func (s *Server) AcceptPacket(tunnel.Tunnel) (tunnel.PacketConn, error) {
 	panic("not supported")
 }

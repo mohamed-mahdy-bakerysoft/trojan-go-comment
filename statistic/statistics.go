@@ -10,6 +10,7 @@ import (
 	"github.com/p4gefau1t/trojan-go/log"
 )
 
+// 流量统计
 type TrafficMeter interface {
 	io.Closer
 	Hash() string

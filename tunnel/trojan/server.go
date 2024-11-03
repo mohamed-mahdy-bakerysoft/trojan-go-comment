@@ -26,15 +26,15 @@ type InboundConn struct {
 	// must be 64-bit aligned on 32-bit systems.
 	// Reference: https://github.com/golang/go/issues/599
 	// Solution: https://github.com/golang/go/issues/11891#issuecomment-433623786
-	sent uint64
-	recv uint64
+	sent uint64 // 发送的数据包字节累计
+	recv uint64 // 接收的数据包字节累计
 
-	net.Conn
-	auth     statistic.Authenticator
-	user     statistic.User
-	hash     string
-	metadata *tunnel.Metadata
-	ip       string
+	net.Conn                         // 下一层连接
+	auth     statistic.Authenticator // 用来认证用户
+	user     statistic.User          // 客户端连接用户
+	hash     string                  // 数据包 hash
+	metadata *tunnel.Metadata        // 请求目标地址信息
+	ip       string                  // 客户端连接 ip
 }
 
 func (c *InboundConn) Metadata() *tunnel.Metadata {
@@ -44,14 +44,14 @@ func (c *InboundConn) Metadata() *tunnel.Metadata {
 func (c *InboundConn) Write(p []byte) (int, error) {
 	n, err := c.Conn.Write(p)
 	atomic.AddUint64(&c.sent, uint64(n))
-	c.user.AddTraffic(n, 0)
+	c.user.AddTraffic(n, 0) // 记录该用户写入的流量
 	return n, err
 }
 
 func (c *InboundConn) Read(p []byte) (int, error) {
 	n, err := c.Conn.Read(p)
 	atomic.AddUint64(&c.recv, uint64(n))
-	c.user.AddTraffic(0, n)
+	c.user.AddTraffic(0, n) // 记录该用户读取的流量
 	return n, err
 }
 
@@ -62,6 +62,14 @@ func (c *InboundConn) Close() error {
 	return c.Conn.Close()
 }
 
+/*
+*
++-----------------------+---------+----------------+---------+----------+
+| hex(SHA224(password)) |  CRLF   | Trojan Request |  CRLF   | Payload  |
++-----------------------+---------+----------------+---------+----------+
+|          56           | X'0D0A' |    Variable    | X'0D0A' | Variable |
++-----------------------+---------+----------------+---------+----------+
+*/
 func (c *InboundConn) Auth() error {
 	userHash := [56]byte{}
 	n, err := c.Conn.Read(userHash[:])
@@ -69,11 +77,12 @@ func (c *InboundConn) Auth() error {
 		return common.NewError("failed to read hash").Base(err)
 	}
 
+	// 验证是否是合法用户
 	valid, user := c.auth.AuthUser(string(userHash[:]))
 	if !valid {
 		return common.NewError("invalid hash:" + string(userHash[:]))
 	}
-	c.hash = string(userHash[:])
+	c.hash = string(userHash[:]) // 将整个字节数组转换为切片，然后转换为字符串
 	c.user = user
 
 	ip, _, err := net.SplitHostPort(c.Conn.RemoteAddr().String())
@@ -87,18 +96,19 @@ func (c *InboundConn) Auth() error {
 		return common.NewError("ip limit reached")
 	}
 
-	crlf := [2]byte{}
+	crlf := [2]byte{} // CRLF 占用2个字节
 	_, err = io.ReadFull(c.Conn, crlf[:])
 	if err != nil {
 		return err
 	}
 
 	c.metadata = &tunnel.Metadata{}
+	// 读取目标地址信息
 	if err := c.metadata.ReadFrom(c.Conn); err != nil {
 		return err
 	}
 
-	_, err = io.ReadFull(c.Conn, crlf[:])
+	_, err = io.ReadFull(c.Conn, crlf[:]) // 读取 CRLF 占用2个字节，后面的数据就是请求负载了
 	if err != nil {
 		return err
 	}
@@ -107,13 +117,13 @@ func (c *InboundConn) Auth() error {
 
 // Server is a trojan tunnel server
 type Server struct {
-	auth       statistic.Authenticator
+	auth       statistic.Authenticator // 身份认证
 	redir      *redirector.Redirector
 	redirAddr  *tunnel.Address
 	underlay   tunnel.Server
-	connChan   chan tunnel.Conn
-	muxChan    chan tunnel.Conn
-	packetChan chan tunnel.PacketConn
+	connChan   chan tunnel.Conn       // trojan TCP连接通道
+	muxChan    chan tunnel.Conn       // 多路复用连接通道
+	packetChan chan tunnel.PacketConn // trojan UDP连接通道
 	ctx        context.Context
 	cancel     context.CancelFunc
 }
@@ -145,6 +155,7 @@ func (s *Server) acceptLoop() {
 				auth: s.auth,
 			}
 
+			// auth() 方法解析 trojan 协议
 			if err := inboundConn.Auth(); err != nil {
 				rewindConn.Rewind()
 				rewindConn.StopBuffering()
@@ -159,7 +170,7 @@ func (s *Server) acceptLoop() {
 			rewindConn.StopBuffering()
 			switch inboundConn.metadata.Command {
 			case Connect:
-				if inboundConn.metadata.DomainName == "MUX_CONN" {
+				if inboundConn.metadata.DomainName == "MUX_CONN" { // 多路复用
 					s.muxChan <- inboundConn
 					log.Debug("mux(r) connection")
 				} else {
@@ -182,9 +193,10 @@ func (s *Server) acceptLoop() {
 	}
 }
 
+// 让上一层协议获取当前层协议的连接
 func (s *Server) AcceptConn(nextTunnel tunnel.Tunnel) (tunnel.Conn, error) {
 	switch nextTunnel.(type) {
-	case *mux.Tunnel:
+	case *mux.Tunnel: // 多路复用服务协议
 		select {
 		case t := <-s.muxChan:
 			return t, nil
@@ -201,6 +213,7 @@ func (s *Server) AcceptConn(nextTunnel tunnel.Tunnel) (tunnel.Conn, error) {
 	}
 }
 
+// 支持向上层提供 UDP 包
 func (s *Server) AcceptPacket(tunnel.Tunnel) (tunnel.PacketConn, error) {
 	select {
 	case t := <-s.packetChan:
@@ -246,7 +259,7 @@ func NewServer(ctx context.Context, underlay tunnel.Server) (*Server, error) {
 		redir:      redirector.NewRedirector(ctx),
 	}
 
-	if !cfg.DisableHTTPCheck {
+	if !cfg.DisableHTTPCheck { // HTTP 重定向地址
 		redirConn, err := net.Dial("tcp", redirAddr.String())
 		if err != nil {
 			cancel()

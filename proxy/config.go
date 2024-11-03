@@ -10,6 +10,7 @@ type Config struct {
 
 func init() {
 	config.RegisterConfigCreator(Name, func() interface{} {
+		// 返回一个指向 Config 类型的指针，初始化 LogLevel 为 1
 		return &Config{
 			LogLevel: 1,
 		}

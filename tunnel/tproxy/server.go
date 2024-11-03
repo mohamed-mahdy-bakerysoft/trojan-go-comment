@@ -35,6 +35,7 @@ func (s *Server) Close() error {
 	return s.udpListener.Close()
 }
 
+// 让上一层协议获取当前层协议的连接
 func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	conn, err := s.tcpListener.Accept()
 	if err != nil {
@@ -182,6 +183,7 @@ func (s *Server) packetDispatchLoop() {
 	}
 }
 
+// 不支持向上层提供 UDP 包
 func (s *Server) AcceptPacket(tunnel.Tunnel) (tunnel.PacketConn, error) {
 	select {
 	case conn := <-s.packetChan:
@@ -196,7 +198,7 @@ func NewServer(ctx context.Context, _ tunnel.Server) (*Server, error) {
 	cfg := config.FromContext(ctx, Name).(*Config)
 	ctx, cancel := context.WithCancel(ctx)
 	listenAddr := tunnel.NewAddressFromHostPort("tcp", cfg.LocalHost, cfg.LocalPort)
-	ip, err := listenAddr.ResolveIP()
+	ip, err := listenAddr.ResolveIP() // 获取地址ip
 	if err != nil {
 		cancel()
 		return nil, common.NewError("invalid tproxy local address").Base(err)

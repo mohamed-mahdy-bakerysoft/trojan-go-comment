@@ -125,7 +125,7 @@ type Client struct {
 	defaultPolicy  int
 	domainStrategy int
 	underlay       tunnel.Client
-	direct         *freedom.Client
+	direct         *freedom.Client // freedom 客户端
 	ctx            context.Context
 	cancel         context.CancelFunc
 }
@@ -167,15 +167,16 @@ func (c *Client) Route(address *tunnel.Address) int {
 	return c.defaultPolicy
 }
 
+// TCP 连接
 func (c *Client) DialConn(address *tunnel.Address, overlay tunnel.Tunnel) (tunnel.Conn, error) {
 	policy := c.Route(address)
 	switch policy {
 	case Proxy:
-		return c.underlay.DialConn(address, overlay)
+		return c.underlay.DialConn(address, overlay) // 需要代理，则使用底层 连接
 	case Block:
 		return nil, common.NewError("router blocked address: " + address.String())
 	case Bypass:
-		conn, err := c.direct.DialConn(address, &Tunnel{})
+		conn, err := c.direct.DialConn(address, &Tunnel{}) // 直接连接
 		if err != nil {
 			return nil, common.NewError("router dial error").Base(err)
 		}
@@ -186,6 +187,7 @@ func (c *Client) DialConn(address *tunnel.Address, overlay tunnel.Tunnel) (tunne
 	panic("unknown policy")
 }
 
+// UDP 连接
 func (c *Client) DialPacket(overlay tunnel.Tunnel) (tunnel.PacketConn, error) {
 	directConn, err := net.ListenPacket("udp", "")
 	if err != nil {
@@ -260,6 +262,8 @@ func loadCode(cfg *Config, prefix string) []codeInfo {
 }
 
 func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
+	// 用于记录 Go 运行时的内存分配统计信息。使用 m1 := runtime.MemStats{} 可以创建一个新的 MemStats 变量，但这并不会自动填充其内容。
+	// 你通常需要调用 runtime.ReadMemStats(&m1) 来获取当前的内存使用情况
 	m1 := runtime.MemStats{}
 	m2 := runtime.MemStats{}
 	m3 := runtime.MemStats{}
@@ -278,11 +282,17 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 	client := &Client{
 		domains:  [3][]*v2router.Domain{},
 		cidrs:    [3][]*v2router.CIDR{},
-		underlay: underlay,
+		underlay: underlay, // 下一层协议服务
 		direct:   direct,
 		ctx:      ctx,
 		cancel:   cancel,
 	}
+	/**
+	域名解析策略，默认"as_is"。合法的值有：
+		1. “as_is”，只在各列表中的域名规则内进行匹配。
+		2. “ip_if_non_match”，先在各列表中的域名规则内进行匹配；如果不匹配，则解析为IP后，在各列表中的IP地址规则内进行匹配。该策略可能导致DNS泄漏或遭到污染。
+		3. “ip_on_demand”，先解析为IP，在各列表中的IP地址规则内进行匹配；如果不匹配，则在各列表中的域名规则内进行匹配。该策略可能导致DNS泄漏或遭到污染。
+	*/
 	switch strings.ToLower(cfg.Router.DomainStrategy) {
 	case "as_is", "as-is", "asis":
 		client.domainStrategy = AsIs
@@ -294,6 +304,7 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 		return nil, common.NewError("unknown strategy: " + cfg.Router.DomainStrategy)
 	}
 
+	// 指的是三个列表匹配均失败后，使用的默认策略，默认为"proxy”，即进行代理
 	switch strings.ToLower(cfg.Router.DefaultPolicy) {
 	case "proxy":
 		client.defaultPolicy = Proxy
@@ -305,14 +316,14 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 		return nil, common.NewError("unknown strategy: " + cfg.Router.DomainStrategy)
 	}
 
-	runtime.ReadMemStats(&m1)
+	runtime.ReadMemStats(&m1) // 获取当前的内存使用情况
 
 	geodataLoader := geodata.NewGeodataLoader()
 
 	ipCode := loadCode(cfg, "geoip:")
 	for _, c := range ipCode {
 		code := c.code
-		cidrs, err := geodataLoader.LoadIP(cfg.Router.GeoIPFilename, code)
+		cidrs, err := geodataLoader.LoadIP(cfg.Router.GeoIPFilename, code) // geoip.dat
 		if err != nil {
 			log.Error(err)
 		} else {
@@ -321,7 +332,7 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 		}
 	}
 
-	runtime.ReadMemStats(&m2)
+	runtime.ReadMemStats(&m2) // 获取当前的内存使用情况
 
 	siteCode := loadCode(cfg, "geosite:")
 	for _, c := range siteCode {
@@ -341,7 +352,7 @@ func NewClient(ctx context.Context, underlay tunnel.Client) (*Client, error) {
 			continue
 		}
 
-		domainList, err := geodataLoader.LoadSite(cfg.Router.GeoSiteFilename, code)
+		domainList, err := geodataLoader.LoadSite(cfg.Router.GeoSiteFilename, code) // geosite.dat
 		if err != nil {
 			log.Error(err)
 		} else {

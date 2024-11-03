@@ -70,7 +70,7 @@ type Server struct {
 
 func (s *Server) acceptLoop() {
 	for {
-		conn, err := s.underlay.AcceptConn(&Tunnel{})
+		conn, err := s.underlay.AcceptConn(&Tunnel{}) // 获取栈下一层连接
 		if err != nil {
 			select {
 			case <-s.ctx.Done():
@@ -83,6 +83,12 @@ func (s *Server) acceptLoop() {
 		}
 
 		go func(conn net.Conn) {
+			/**
+			ioutil.NopCloser 是一个包装器，它将一个 io.Reader（在这里是 conn，通常是一个网络连接）包装为 io.ReadCloser。它的作用是提供一个 Close 方法，但实际并不执行任何操作（即不做任何关闭连接的工作）。
+			这样做的目的是为了满足 http.ReadRequest 函数对 io.ReadCloser 类型的要求
+
+			bufio.NewReader 创建一个带缓冲的读取器，可以提高读取效率。它会对底层的读取器（这里是 NopCloser(conn)）进行缓冲，从而减少系统调用的次数
+			*/
 			reqBufReader := bufio.NewReader(ioutil.NopCloser(conn))
 			req, err := http.ReadRequest(reqBufReader)
 			if err != nil {
@@ -104,7 +110,7 @@ func (s *Server) acceptLoop() {
 					conn.Close()
 					return
 				}
-				s.connChan <- &ConnectConn{
+				s.connChan <- &ConnectConn{ // http tcp连接建立
 					Conn: conn,
 					metadata: &tunnel.Metadata{
 						Address: addr,
@@ -112,7 +118,7 @@ func (s *Server) acceptLoop() {
 				}
 			} else { // GET, POST, PUT...
 				defer conn.Close()
-				for {
+				for { // 建立转发
 					reqReader, reqWriter := io.Pipe()
 					respReader, respWriter := io.Pipe()
 					var addr *tunnel.Address
@@ -166,6 +172,7 @@ func (s *Server) acceptLoop() {
 	}
 }
 
+// 让上一层协议获取当前层协议的连接
 func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	select {
 	case conn := <-s.connChan:
@@ -175,6 +182,7 @@ func (s *Server) AcceptConn(tunnel.Tunnel) (tunnel.Conn, error) {
 	}
 }
 
+// 不支持向上层提供 UDP 包
 func (s *Server) AcceptPacket(tunnel.Tunnel) (tunnel.PacketConn, error) {
 	<-s.ctx.Done()
 	return nil, common.NewError("http server closed")

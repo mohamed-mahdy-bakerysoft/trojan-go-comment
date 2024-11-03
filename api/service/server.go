@@ -21,9 +21,10 @@ import (
 
 type ServerAPI struct {
 	TrojanServerServiceServer
-	auth statistic.Authenticator
+	auth statistic.Authenticator // 认证模块
 }
 
+// 获取用户
 func (s *ServerAPI) GetUsers(stream TrojanServerService_GetUsersServer) error {
 	log.Debug("API: GetUsers")
 	for {
@@ -40,7 +41,7 @@ func (s *ServerAPI) GetUsers(stream TrojanServerService_GetUsersServer) error {
 		if req.User.Hash == "" {
 			req.User.Hash = common.SHA224String(req.User.Password)
 		}
-		valid, user := s.auth.AuthUser(req.User.Hash)
+		valid, user := s.auth.AuthUser(req.User.Hash) // 根据hash获取用户信息
 		if !valid {
 			stream.Send(&GetUsersResponse{
 				Success: false,
@@ -183,7 +184,7 @@ func (s *ServerAPI) ListUsers(req *ListUsersRequest, stream TrojanServerService_
 
 func newAPIServer(cfg *Config) (*grpc.Server, error) {
 	var server *grpc.Server
-	if cfg.API.SSL.Enabled {
+	if cfg.API.SSL.Enabled { // 开启 SSL
 		log.Info("api tls enabled")
 		keyPair, err := tls.LoadX509KeyPair(cfg.API.SSL.CertPath, cfg.API.SSL.KeyPath)
 		if err != nil {
@@ -207,6 +208,7 @@ func newAPIServer(cfg *Config) (*grpc.Server, error) {
 				}
 			}
 		}
+		// 使用 gRPC 创建一个安全的 gRPC 服务器，利用 TLS（传输层安全）来保护通信
 		creds := credentials.NewTLS(tlsConfig)
 		server = grpc.NewServer(grpc.Creds(creds))
 	} else {
@@ -215,13 +217,14 @@ func newAPIServer(cfg *Config) (*grpc.Server, error) {
 	return server, nil
 }
 
+// 运行服务端 api 接口服务
 func RunServerAPI(ctx context.Context, auth statistic.Authenticator) error {
 	cfg := config.FromContext(ctx, Name).(*Config)
 	if !cfg.API.Enabled {
 		return nil
 	}
 	service := &ServerAPI{
-		auth: auth,
+		auth: auth, // 认证模块
 	}
 	server, err := newAPIServer(cfg)
 	if err != nil {
@@ -236,7 +239,7 @@ func RunServerAPI(ctx context.Context, auth statistic.Authenticator) error {
 	listener, err := net.Listen("tcp", (&net.TCPAddr{
 		IP:   addr.IP,
 		Port: cfg.API.APIPort,
-		Zone: addr.Zone,
+		Zone: addr.Zone, // 通常在使用 IPv6 地址时需要
 	}).String())
 	if err != nil {
 		return common.NewError("server api failed to listen").Base(err)
@@ -256,6 +259,7 @@ func RunServerAPI(ctx context.Context, auth statistic.Authenticator) error {
 	}
 }
 
+// 在模块加载时自动运行
 func init() {
 	api.RegisterHandler(trojan.Name+"_SERVER", RunServerAPI)
 }

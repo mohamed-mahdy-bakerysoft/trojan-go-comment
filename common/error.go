@@ -28,6 +28,7 @@ func NewError(info string) *Error {
 func Must(err error) {
 	if err != nil {
 		fmt.Println(err)
+		// 当调用 panic 时，当前的执行流程会立即中止，程序开始执行延迟的清理（如 defer 语句），并最终导致程序崩溃
 		panic(err)
 	}
 }

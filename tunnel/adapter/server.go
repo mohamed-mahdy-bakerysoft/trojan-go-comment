@@ -17,10 +17,10 @@ import (
 type Server struct {
 	tcpListener net.Listener
 	udpListener net.PacketConn
-	socksConn   chan tunnel.Conn
-	httpConn    chan tunnel.Conn
+	socksConn   chan tunnel.Conn // socks连接通道
+	httpConn    chan tunnel.Conn // http连接通道
 	socksLock   sync.RWMutex
-	nextSocks   bool
+	nextSocks   bool // 下一个协议是否是 socks5
 	ctx         context.Context
 	cancel      context.CancelFunc
 }
@@ -40,7 +40,7 @@ func (s *Server) acceptConnLoop() {
 		rewindConn := common.NewRewindConn(conn)
 		rewindConn.SetBufferSize(16)
 		buf := [3]byte{}
-		_, err = rewindConn.Read(buf[:])
+		_, err = rewindConn.Read(buf[:]) // 读取前3个字节
 		rewindConn.Rewind()
 		rewindConn.StopBuffering()
 		if err != nil {
@@ -48,13 +48,13 @@ func (s *Server) acceptConnLoop() {
 			continue
 		}
 		s.socksLock.RLock()
-		if buf[0] == 5 && s.nextSocks {
+		if buf[0] == 5 && s.nextSocks { // socks5 连接
 			s.socksLock.RUnlock()
 			log.Debug("socks5 connection")
 			s.socksConn <- &freedom.Conn{
 				Conn: rewindConn,
 			}
-		} else {
+		} else { // http 连接
 			s.socksLock.RUnlock()
 			log.Debug("http connection")
 			s.httpConn <- &freedom.Conn{
@@ -105,12 +105,12 @@ func NewServer(ctx context.Context, _ tunnel.Server) (*Server, error) {
 	ctx, cancel = context.WithCancel(ctx)
 
 	addr := tunnel.NewAddressFromHostPort("tcp", cfg.LocalHost, cfg.LocalPort)
-	tcpListener, err := net.Listen("tcp", addr.String())
+	tcpListener, err := net.Listen("tcp", addr.String()) // 开启 TCP 监听
 	if err != nil {
 		cancel()
 		return nil, common.NewError("adapter failed to create tcp listener").Base(err)
 	}
-	udpListener, err := net.ListenPacket("udp", addr.String())
+	udpListener, err := net.ListenPacket("udp", addr.String()) // 开启 UDP 监听
 	if err != nil {
 		cancel()
 		return nil, common.NewError("adapter failed to create tcp listener").Base(err)

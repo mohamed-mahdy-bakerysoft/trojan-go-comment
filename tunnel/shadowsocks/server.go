@@ -20,6 +20,7 @@ type Server struct {
 	redirAddr net.Addr
 }
 
+// 让上一层协议获取当前层协议的连接
 func (s *Server) AcceptConn(overlay tunnel.Tunnel) (tunnel.Conn, error) {
 	conn, err := s.underlay.AcceptConn(&Tunnel{})
 	if err != nil {
@@ -37,6 +38,7 @@ func (s *Server) AcceptConn(overlay tunnel.Tunnel) (tunnel.Conn, error) {
 		log.Error(common.NewError("shadowsocks failed to decrypt").Base(err))
 		rewindConn.Rewind()
 		rewindConn.StopBuffering()
+		// 请求重定向
 		s.Redirect(&redirector.Redirection{
 			RedirectTo:  s.redirAddr,
 			InboundConn: rewindConn,
@@ -52,6 +54,7 @@ func (s *Server) AcceptConn(overlay tunnel.Tunnel) (tunnel.Conn, error) {
 	}, nil
 }
 
+// 不支持向上层提供 UDP 包
 func (s *Server) AcceptPacket(t tunnel.Tunnel) (tunnel.PacketConn, error) {
 	panic("not supported")
 }

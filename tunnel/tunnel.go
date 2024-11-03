@@ -33,7 +33,7 @@ type PacketDialer interface {
 
 // ConnListener accept TCP connections
 type ConnListener interface {
-	AcceptConn(Tunnel) (Conn, error)
+	AcceptConn(Tunnel) (Conn, error) // 获取下一层协议的连接
 }
 
 // PacketListener accept UDP packet stream

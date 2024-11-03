@@ -11,11 +11,33 @@ import (
 	"github.com/p4gefau1t/trojan-go/common"
 )
 
+// 一些辅助方法
+
 type Command byte
 
+/*
+*
++-----+------+----------+----------+
+| CMD | ATYP | DST.ADDR | DST.PORT |
++-----+------+----------+----------+
+|  1  |  1   | Variable |    2     |
++-----+------+----------+----------+
+
+where:
+
+	o  CMD
+	    o  CONNECT X'01'
+	    o  UDP ASSOCIATE X'03'
+	o  ATYP address type of following address
+	    o  IP V4 address: X'01'
+	    o  DOMAINNAME: X'03'
+	    o  IP V6 address: X'04'
+	o  DST.ADDR desired destination address
+	o  DST.PORT desired destination port in network octet order
+*/
 type Metadata struct {
 	Command
-	*Address
+	*Address // 目标地址信息
 }
 
 func (r *Metadata) ReadFrom(rr io.Reader) error {
@@ -24,9 +46,9 @@ func (r *Metadata) ReadFrom(rr io.Reader) error {
 	if err != nil {
 		return err
 	}
-	r.Command = Command(byteBuf[0])
+	r.Command = Command(byteBuf[0]) // 获取 trojan CMD数据
 	r.Address = new(Address)
-	err = r.Address.ReadFrom(rr)
+	err = r.Address.ReadFrom(rr) // 获取 trojan ATYP | DST.ADDR | DST.PORT 数据
 	if err != nil {
 		return common.NewError("failed to marshal address").Base(err)
 	}
@@ -136,13 +158,14 @@ func NewAddressFromHostPort(network string, host string, port int) *Address {
 	}
 }
 
+// 获取 trojan 协议 地址部分信息
 func (a *Address) ReadFrom(r io.Reader) error {
 	byteBuf := [1]byte{}
 	_, err := io.ReadFull(r, byteBuf[:])
 	if err != nil {
 		return common.NewError("unable to read ATYP").Base(err)
 	}
-	a.AddressType = AddressType(byteBuf[0])
+	a.AddressType = AddressType(byteBuf[0]) // 读取 ATYP 字段信息
 	switch a.AddressType {
 	case IPv4:
 		var buf [6]byte
@@ -173,6 +196,7 @@ func (a *Address) ReadFrom(r io.Reader) error {
 		}
 		// the fucking browser uses IP as a domain name sometimes
 		host := buf[0:length]
+		// 在服务端解析域名地址
 		if ip := net.ParseIP(string(host)); ip != nil {
 			a.IP = ip
 			if ip.To4() != nil {
