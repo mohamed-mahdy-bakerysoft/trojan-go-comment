@@ -18,7 +18,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/lzh06550107/trojan-go-co
 
 2、域名解析到 VPS 需要间生效，建议留 10 分钟，用 cloudflare 解析，能良好支持 TLS；
 
-3、脚本自动续签 https 证书；
+3、确保服务器80端口开启(注意防火墙)，脚本自动续签 https 证书；
 
 4、自动配置伪装网站，位于 /usr/share/nginx/html/ 目录下，可自行替换其中内容；
 
