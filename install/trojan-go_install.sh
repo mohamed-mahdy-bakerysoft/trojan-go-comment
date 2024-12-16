@@ -236,7 +236,7 @@ tls_generate_script_install() {
     if [[ "${cmd}" == "yum" ]]; then
         ${cmd} install socat nc -y
     else
-        ${cmd} install socat netcat -y
+        ${cmd} install socat netcat-openbsd -y
     fi
     sucess_or_fail "安装 tls 证书生成脚本依赖"
 
