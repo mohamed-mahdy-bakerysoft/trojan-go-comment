@@ -632,8 +632,8 @@ trojan_client_conf(){
   "ssl": {
     "verify": true,
     "verify_hostname": true,
-    "cert": "/data/${domain}/fullchain.crt",
-    "key": "/data/${domain}/privkey.key",
+    "cert": "fullchain.crt",
+    "key": "privkey.key",
     "key_password": "",
     "cipher": "",
     "cipher_tls13": "",
@@ -725,7 +725,8 @@ EOF
   cp /data/${domain}/fullchain.crt ${web_trojan}
   cp /data/${domain}/privkey.key ${web_trojan}
   cp ${web_dir}/${uuid}.json ${web_trojan}/client.json
-  zip -r ${web_dir}/trojan-go.zip ${web_trojan}
+  cd ${web_dir}
+  zip -r trojan-go.zip ${web_trojan}
 }
 
 # 下载伪装网站
