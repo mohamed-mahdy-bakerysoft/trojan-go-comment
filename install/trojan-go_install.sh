@@ -457,10 +457,12 @@ download_install(){
       unzip -o -d ${trojan_bin_dir} ${trojan_bin_dir}/trojan-go-windows-amd64.zip
       sucess_or_fail "trojan-go client 解压"
       [[ ! -d "${web_trojan}" ]] && mkdir -p "${web_trojan}"
-      cp -r ${trojan_bin_dir}/trojan-go-windows-amd64 ${web_trojan}
+      cp -r ${trojan_bin_dir} ${web_trojan}
+      sucess_or_fail "trojan-go client 复制成功"
 
       rm -f ${trojan_bin_dir}/trojan-go-windows-amd64.zip
-      rm -rf ${trojan_bin_dir}/trojan-go-windows-amd64
+      rm -rf ${trojan_bin_dir}
+
   else
     echo -e "${Info}trojan-go已存在，无需安装"
   fi
