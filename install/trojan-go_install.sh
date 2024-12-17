@@ -453,6 +453,7 @@ download_install(){
 
       # 下载win客户端
       [[ ! -d "${trojan_bin_dir}/client" ]] && mkdir -p "${trojan_bin_dir}/client"
+      echo "${trojan_bin_dir}/client"
       wget --no-check-certificate -O ${trojan_bin_dir}/trojan-go-windows-amd64.zip "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-windows-amd64.zip"
       sucess_or_fail "trojan-go client 下载"
       unzip -o -d ${trojan_bin_dir}/client ${trojan_bin_dir}/trojan-go-windows-amd64.zip
@@ -462,8 +463,8 @@ download_install(){
       cp -r ${trojan_bin_dir}/client ${web_trojan}
       sucess_or_fail "trojan-go client 复制成功"
 
-      rm -f ${trojan_bin_dir}/trojan-go-windows-amd64.zip
-      rm -rf ${trojan_bin_dir}/client
+#      rm -f ${trojan_bin_dir}/trojan-go-windows-amd64.zip
+#      rm -rf ${trojan_bin_dir}/client
 
   else
     echo -e "${Info}trojan-go已存在，无需安装"
