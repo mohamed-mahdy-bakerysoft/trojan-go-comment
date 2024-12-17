@@ -726,7 +726,7 @@ EOF
   cp /data/${domain}/privkey.key ${web_trojan}
   cp ${web_dir}/${uuid}.json ${web_trojan}/client.json
   cd ${web_dir}
-  zip -r trojan-go.zip ${web_trojan}
+  zip -r trojan-go.zip trojan
 }
 
 # 下载伪装网站
