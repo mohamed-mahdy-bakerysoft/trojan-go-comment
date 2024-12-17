@@ -753,7 +753,7 @@ web_download() {
     read -rp "$(echo -e "${Tip}请输入你要下载的网站的数字:")" aNum
     case $aNum in
     1)
-      wget -O ${web_dir}/web.zip --no-check-certificate https://templated.co/intensify/download
+      wget -O ${web_dir}/web.zip --no-check-certificate https://raw.githubusercontent.com/lzh06550107/trojan-go-comment/refs/heads/master/install/web.zip
       ;;
     2)
       wget -O ${web_dir}/web.zip --no-check-certificate https://templated.co/binary/download
