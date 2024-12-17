@@ -309,7 +309,9 @@ CGO_ENABLED=0 GOOS=macos GOARCH=arm64 go build -tags "full"
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags "full"
 ```
 
-## 安装脚本
+## 自动部署脚本
+
+在服务器控制台执行如下命令：
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/lzh06550107/trojan-go-comment/master/install/trojan-go_install.sh)"

@@ -28,6 +28,7 @@ trojan_conf_file=${trojan_conf_dir}/server.json
 trojan_qr_config_file=${trojan_conf_dir}/qrconfig.json
 trojan_systemd_file="/etc/systemd/system/trojan.service"
 web_dir="/usr/wwwroot"
+web_trojan=${web_dir}/trojan
 nginx_bin_file="/etc/nginx/sbin/nginx"
 nginx_conf_dir="/etc/nginx/conf/conf.d"
 nginx_conf="${nginx_conf_dir}/default.conf"
@@ -229,6 +230,7 @@ check_domain() {
 # 删除下载的伪装网站文件
 uninstall_web() {
   [[ -d ${web_dir} ]] && rm -rf ${web_dir} && echo -e "${Info}开始删除伪装网站……" && echo -e "${Info}伪装网站删除成功！"
+  [[ -d ${web_trojan} ]] && rm -rf ${web_trojan}
 }
 
 # 获取生成证书脚本
@@ -243,6 +245,7 @@ tls_generate_script_install() {
     curl https://get.acme.sh | sh
     sucess_or_fail "安装 tls 证书生成脚本"
     source ~/.bashrc
+    "$HOME"/.acme.sh/acme.sh --set-default-ca --server letsencrypt
 }
 
 # 开始生成 tls 证书
@@ -250,7 +253,6 @@ tls_generate() {
   if [[ -f "/data/${domain}/fullchain.crt" ]] && [[ -f "/data/${domain}/privkey.key" ]]; then
     echo -e "${Info}证书已存在……不需要再重新签发了……"
   else
-    "$HOME"/.acme.sh/acme.sh --set-default-ca --server letsencrypt
     if "$HOME"/.acme.sh/acme.sh --issue -d "${domain}" --standalone -k ec-256 --force --test; then
         echo -e "${Info} TLS 证书测试签发成功，开始正式签发"
         rm -rf "$HOME/.acme.sh/${domain}_ecc"
@@ -423,19 +425,19 @@ download_install(){
   if [[ ! -f ${trojan_bin_dir}/trojan-go ]];then
       case  ${bit} in
       "x86_64")
-        wget --no-check-certificate -O ${trojan_bin_dir}/trojan-go-linux-amd64.zip "https://github.com/p4gefau1t/trojan-go/releases/download/v0.4.10/trojan-go-linux-amd64.zip"
+        wget --no-check-certificate -O ${trojan_bin_dir}/trojan-go-linux-amd64.zip "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-amd64.zip"
         sucess_or_fail "trojan-go下载"
         unzip -o -d ${trojan_bin_dir} ${trojan_bin_dir}/trojan-go-linux-amd64.zip
         sucess_or_fail "trojan-go解压"
         ;;
       "i386" | "i686")
-        wget --no-check-certificate -O ${trojan_bin_dir}/trojan-go-linux-386.zip "https://github.com/p4gefau1t/trojan-go/releases/download/v0.4.10/trojan-go-linux-386.zip"
+        wget --no-check-certificate -O ${trojan_bin_dir}/trojan-go-linux-386.zip "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-386.zip"
          sucess_or_fail "trojan-go下载"
         unzip -o -d ${trojan_bin_dir} ${trojan_bin_dir}/trojan-go-linux-386.zip
         sucess_or_fail "trojan-go解压"
         ;;
       "armv7l")
-        wget --no-check-certificate -O ${trojan_bin_dir}/trojan-go-linux-armv7.zip "https://github.com/p4gefau1t/trojan-go/releases/download/v0.4.10/trojan-go-linux-armv7.zip"
+        wget --no-check-certificate -O ${trojan_bin_dir}/trojan-go-linux-armv7.zip "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-armv7.zip"
          sucess_or_fail "trojan-go下载"
         unzip -o -d ${trojan_bin_dir} ${trojan_bin_dir}/trojan-go-linux-armv7.zip
         sucess_or_fail "trojan-go解压"
@@ -444,9 +446,21 @@ download_install(){
         echo -e "${Error}不支持 [${bit}] ! 请向Jeannie反馈[]中的名称，会及时添加支持。" && exit 1
         ;;
       esac
+
       rm -f ${trojan_bin_dir}/trojan-go-linux-amd64.zip
       rm -f ${trojan_bin_dir}/trojan-go-linux-386.zip
       rm -f ${trojan_bin_dir}/trojan-go-linux-armv7.zip
+
+      # 下载win客户端
+      wget --no-check-certificate -O ${trojan_bin_dir}/trojan-go-windows-amd64.zip "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-windows-amd64.zip"
+      sucess_or_fail "trojan-go client 下载"
+      unzip -o -d ${trojan_bin_dir} ${trojan_bin_dir}/trojan-go-windows-amd64.zip
+      sucess_or_fail "trojan-go client 解压"
+      [[ ! -d "${web_trojan}" ]] && mkdir -p "${web_trojan}"
+      cp -r ${trojan_bin_dir}/trojan-go-windows-amd64 ${web_trojan}
+
+      rm -f ${trojan_bin_dir}/trojan-go-windows-amd64.zip
+      rm -rf ${trojan_bin_dir}/trojan-go-windows-amd64
   else
     echo -e "${Info}trojan-go已存在，无需安装"
   fi
@@ -701,11 +715,16 @@ trojan_client_conf(){
   }
 }
 EOF
+  cp /data/${domain}/fullchain.crt ${web_trojan}
+  cp /data/${domain}/privkey.key ${web_trojan}
+  cp ${web_dir}/${uuid}.json ${web_trojan}/client.json
+  zip -r ${web_dir}/trojan-go.zip ${web_trojan}
 }
 
 # 下载伪装网站
 web_download() {
-  [[ ! -d "${web_dir}" ]] && mkdir "${web_dir}"
+  [[ ! -d "${web_dir}" ]] && mkdir "${web_dir}" web_trojan
+  [[ ! -d "${web_trojan}" ]] && mkdir "${web_trojan}"
   while [[ ! -f "${web_dir}/web.zip" ]]; do
     echo -e "${Tip}伪装网站未下载或下载失败,请选择下面的任意一个进行下载:
       ${Info}1. https://templated.co/intensify
