@@ -458,13 +458,13 @@ download_install(){
       unzip -o -d "${trojan_bin_dir}/client" ${trojan_bin_dir}/trojan-go-windows-amd64.zip
       sucess_or_fail "trojan-go client 解压"
 
-      [[ ! -d ${web_trojan} ]] && mkdir -p ${web_trojan}
-      echo 'print web_trojan'
-      echo ${web_trojan}
-      cp -r "${trojan_bin_dir}/client" ${web_trojan}
-      sucess_or_fail "trojan-go client 复制成功"
+#      [[ ! -d ${web_trojan} ]] && mkdir -p ${web_trojan}
+#      echo 'print web_trojan'
+#      echo ${web_trojan}
+#      cp -r "${trojan_bin_dir}/client" ${web_trojan}
+#      sucess_or_fail "trojan-go client 复制成功"
 
-#      rm -f ${trojan_bin_dir}/trojan-go-windows-amd64.zip
+      rm -f ${trojan_bin_dir}/trojan-go-windows-amd64.zip
 #      rm -rf ${trojan_bin_dir}/client
 
   else
@@ -721,6 +721,7 @@ trojan_client_conf(){
   }
 }
 EOF
+  cp -r "${trojan_bin_dir}/client" ${web_trojan}
   cp /data/${domain}/fullchain.crt ${web_trojan}
   cp /data/${domain}/privkey.key ${web_trojan}
   cp ${web_dir}/${uuid}.json ${web_trojan}/client.json
