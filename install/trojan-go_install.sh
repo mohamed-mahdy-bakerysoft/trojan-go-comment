@@ -534,7 +534,7 @@ trojan_go_conf(){
     "session_ticket": true,
     "reuse_session": true,
     "plain_http_response": "",
-    "fallback_port": 1234,
+    "fallback_port": 80,
     "fingerprint": "firefox",
     "serve_plain_text": false
   },
@@ -646,7 +646,7 @@ trojan_client_conf(){
     "session_ticket": true,
     "reuse_session": true,
     "plain_http_response": "",
-    "fallback_port": 1234,
+    "fallback_port": 80,
     "fingerprint": "firefox",
     "serve_plain_text": false
   },
