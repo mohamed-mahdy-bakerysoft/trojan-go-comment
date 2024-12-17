@@ -728,7 +728,7 @@ EOF
 # 下载伪装网站
 web_download() {
   [[ ! -d "${web_dir}" ]] && mkdir "${web_dir}" web_trojan
-  [[ ! -d "${web_trojan}" ]] && mkdir "${web_trojan}"
+#  [[ ! -d "${web_trojan}" ]] && mkdir -p "${web_trojan}"
   while [[ ! -f "${web_dir}/web.zip" ]]; do
     echo -e "${Tip}伪装网站未下载或下载失败,请选择下面的任意一个进行下载:
       ${Info}1. https://templated.co/intensify
